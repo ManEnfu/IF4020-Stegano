@@ -38,9 +38,11 @@ class Wav:
 
 
     def checksize(self, size: int) -> bool:
-        return len(self.data) >= size * 8
+        sampwidth = self.params[1]
+        return len(self.data) >= size * 8 * sampwidth
 
     def embed(self, msg: bytes, randplace: bool = False) -> bool:
+        sampwidth = self.params[1]
         magic = b'\xff' if randplace else b'\x00' 
         _msg = magic + len(msg).to_bytes(8, byteorder='big') + msg
         if not self.checksize(len(_msg)):
@@ -48,27 +50,28 @@ class Wav:
         if not randplace:
             for i in range(len(_msg)):
                 for j in range(8):
+                    k = (i * 8 + j) * sampwidth
                     bit = (_msg[i] >> (7 - j)) & 1
-                    cb = self.data[i * 8 + j]
+                    cb = self.data[k]
                     # print(cb, bit)
                     cb = (cb & 0xfe) | bit
                     # print('>', cb)
-                    self.data[i * 8 + j] = cb
+                    self.data[k] = cb
         else:
             random.seed(0)
-            idx = [0] + random.sample(range(1, len(self.data)), len(_msg) * 8 - 1)
+            idx = [0] + random.sample(range(1, len(self.data) // sampwidth), len(_msg) * 8 - 1)
             for i in range(len(_msg)):
                 for j in range(8):
+                    k = (i * 8 + j)
                     bit = (_msg[i] >> (7 - j)) & 1
-                    cb = self.data[idx[i * 8 + j]]
+                    cb = self.data[idx[k] * sampwidth]
                     cb = (cb & 0xfe) | bit
-                    self.data[idx[i * 8 + j]] = cb
-
-
+                    self.data[idx[k] * sampwidth] = cb
         return True
 
     
     def extract(self) -> bytes:
+        sampwidth = self.params[1]
         di = 0
         mlen = 0
         cb = self.data[0]
@@ -76,12 +79,12 @@ class Wav:
         if bit == 0:
             # sequential
             for i in range(8):
-                if self.data[di] & 1 == 1:
+                if self.data[di * sampwidth] & 1 == 1:
                     print('0 err')
                     return b''
                 di += 1
             for i in range(64):
-                cb = self.data[di]
+                cb = self.data[di * sampwidth]
                 bit = cb & 1
                 mlen = (mlen << 1) | bit
                 di += 1
@@ -89,7 +92,7 @@ class Wav:
             for i in range(mlen):
                 mb = 0
                 for j in range(8):
-                    cb = self.data[di]
+                    cb = self.data[di * sampwidth]
                     bit = cb & 1
                     mb = (mb << 1) | bit
                     di += 1
@@ -98,24 +101,24 @@ class Wav:
         else:
             # random
             random.seed(0)
-            idx = [0] + random.sample(range(1, len(self.data)), 71)
+            idx = [0] + random.sample(range(1, len(self.data) // sampwidth), 71)
             for i in range(8):
-                if self.data[idx[di]] & 1 == 0:
+                if self.data[idx[di] * sampwidth] & 1 == 0:
                     print('1 err')
                     return b''
                 di += 1
             for i in range(64):
-                cb = self.data[idx[di]]
+                cb = self.data[idx[di] * sampwidth]
                 bit = cb & 1
                 mlen = (mlen << 1) | bit
                 di += 1
             random.seed(0)
-            idx = [0] + random.sample(range(1, len(self.data)), 71 + mlen * 8)
+            idx = [0] + random.sample(range(1, len(self.data) //sampwidth), 71 + mlen * 8)
             data = bytearray([0 for i in range(mlen)])
             for i in range(mlen):
                 mb = 0
                 for j in range(8):
-                    cb = self.data[idx[di]]
+                    cb = self.data[idx[di] * sampwidth]
                     bit = cb & 1
                     mb = (mb << 1) | bit
                     di += 1
@@ -127,7 +130,15 @@ if __name__ == '__main__':
     if len(sys.argv) < 3:
         exit(-1)
     wav = Wav(sys.argv[1])
+    wav.info()
+    print(wav.data[0:18])
     if sys.argv[2] == 'i':
+        if len(sys.argv) < 5:
+            exit(-1)
+        msg = util.read_file_binary(sys.argv[3])
+        wav.embed(msg)
+        wav.write(sys.argv[4])
+    elif sys.argv[2] == 'ir':
         if len(sys.argv) < 5:
             exit(-1)
         msg = util.read_file_binary(sys.argv[3])
