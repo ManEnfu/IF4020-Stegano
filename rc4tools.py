@@ -1,3 +1,5 @@
+#!/usr/bin/python
+
 import sys
 import util
 import rc4
@@ -53,7 +55,6 @@ class MainWindow(QtWidgets.QMainWindow):
         clayout.addLayout(top_layout)
         clayout.addWidget(QtWidgets.QLabel('Encryption Key'))
         clayout.addWidget(self.key_textbox)
-        clayout.addStretch()
         clayout.addLayout(bot_layout)
         
         center.setLayout(clayout)
