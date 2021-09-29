@@ -1,3 +1,4 @@
+import sys
 from PyQt5 import QtCore, QtWidgets
 
 class MainWindow(QtWidgets.QMainWindow):
@@ -57,3 +58,12 @@ class MainWindow(QtWidgets.QMainWindow):
         
         center.setLayout(clayout)
         self.setCentralWidget(center)
+
+def main():
+    app = QtWidgets.QApplication(sys.argv)
+    win = MainWindow(None)
+    win.show()
+    sys.exit(app.exec_())
+
+if __name__ == '__main__':
+    main()
