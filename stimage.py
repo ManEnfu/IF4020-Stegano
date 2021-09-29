@@ -3,7 +3,7 @@ import sys
 import random
 import io
 import os
-
+import math
 class BitMap:
 
   def __init__(self, coverPath: str = None):
@@ -18,30 +18,51 @@ class BitMap:
     self.img = img
 
   def writeImage(self, targetPath: str):
-    path = self.path.split(os.sep)
-    filename = path[len(path) - 1].split('.')
-    formatType = filename[len(filename) - 1]
-    targetName = "{}.{}".format(targetPath, formatType)
-    print(targetName)
-    self.img.save(targetName)
+    if self.img:
+      path = self.path.split(os.sep)
+      filename = path[len(path) - 1].split('.')
+      formatType = filename[len(filename) - 1]
+      targetName = "{}.{}".format(targetPath, formatType)
+      self.img.save(targetName)
+    else: print('no image found')
 
   def checksize(self, size: int):
     width, height = self.img.size
     return width * height >= size * 8
   
   def info(self):
-    if self.img:
+    if not self.img == None:
       w, h = self.img.size
       print('width:', w)
       print('height:', h)
     else:
       print('No Image Loaded')
 
+  def calculatePSNR(self) -> int:
+    if self.prevImg == None:
+      print('stegano image not found')
+      return -1
+    else:
+      sqrDistance = 0
+      width, height = self.img.size
+      pixelsCover = list(self.prevImg.getdata())
+      pixelsStego = list(self.img.getdata())
+      for i in range(height):
+        for j in range(width):
+          evalCoverPixel = pixelsCover[i * width + j]
+          evalStegoCover = pixelsStego[i * width + j]
+          dist = evalCoverPixel[2] - evalStegoCover[2]
+          sqrDist = dist**2
+          sqrDistance += sqrDist
+      rms = math.sqrt(sqrDistance/(width*height))
+      psnr = 20 * math.log10(255/rms)
+      return psnr
+
   def embed(self, msg: bytes, randplace: bool = False) -> bool:
     flag = b'\xff' if randplace else b'\x00'
     _msg = flag + len(msg).to_bytes(8, byteorder='big') + msg
 
-    if not self.checksize(len(_msg)):
+    if (not self.checksize(len(_msg)) or self.img == None):
       return False
     
     newImg = self.img.copy()
@@ -75,6 +96,9 @@ class BitMap:
 
   def extract(self) ->  bytes:
     # extract flag
+    if self.img == None:
+      print('no image found')
+      return b''
     width, height = self.img.size
     if (width * height < 72): return b''
     flag = 0x00
@@ -114,8 +138,9 @@ class BitMap:
 
 
 # TEST CODE
-bitmp = BitMap(os.path.join('Hoki.png'))
-msg = b'\xff\xff\xff\x92'
-bitmp.embed(msg, True)
-bitmp.writeImage('test')
-print(bitmp.extract())
+# bitmp = BitMap(os.path.join('Hoki.png'))
+# msg = b'\xff\xff\xff\x92'
+# bitmp.embed(msg, True)
+# print(bitmp.calculatePSNR())
+# bitmp.writeImage('test')
+# print(bitmp.extract())
