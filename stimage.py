@@ -7,101 +7,115 @@ import os
 class BitMap:
 
   def __init__(self, coverPath: str = None):
-    self.data: bytearray = bytearray(b'')
     self.img: Image = None
+    self.prevImg: Image = None
+    self.path = coverPath
     if coverPath:
       self.readImage(coverPath)
 
   def readImage(self, path: str):
     img = Image.open(path)
     self.img = img
-    buffer = io.BytesIO()
-    img.save(buffer, 'bmp')
-    self.data = bytearray(buffer.getvalue())
 
-  def writeImage(self, path: str):
-    img = Image.open(io.BytesIO(bytes(self.data)))
-    img.save(path)
+  def writeImage(self, targetPath: str):
+    path = self.path.split(os.sep)
+    filename = path[len(path) - 1].split('.')
+    formatType = filename[len(filename) - 1]
+    targetName = "{}.{}".format(targetPath, formatType)
+    print(targetName)
+    self.img.save(targetName)
 
   def checksize(self, size: int):
-    return len(self.data) >= size * 8
+    width, height = self.img.size
+    return width * height >= size * 8
   
   def info(self):
     if self.img:
       w, h = self.img.size
-      print('size:', len(self.data), 'Byte')
       print('width:', w)
       print('height:', h)
     else:
       print('No Image Loaded')
-  
+
   def embed(self, msg: bytes, randplace: bool = False) -> bool:
     flag = b'\xff' if randplace else b'\x00'
     _msg = flag + len(msg).to_bytes(8, byteorder='big') + msg
+
     if not self.checksize(len(_msg)):
       return False
+    
+    newImg = self.img.copy()
+    pixels = list(newImg.getdata())
+    width, height = self.img.size
+
     if not randplace:
-      for i in range (len(_msg)):
-        for j in range(8):
-          bit = (_msg[i] >> (7 - j)) & 1
-          self.data[i * 24 + j * 3] = (self.data[i * 24 + j * 3] & 0xfe) | bit
-    else:
-      random.seed(4020)
-      idx = [i for i in range(72)] + random.sample(range(72, len(self.data)//3), ((len(_msg) - 9) * 8))
       for i in range(len(_msg)):
         for j in range(8):
           bit = (_msg[i] >> (7 - j)) & 1
-          evalIndex: int = idx[i * 8 + j] * 3
-          self.data[evalIndex] = (self.data[evalIndex] & 0xfe) | bit
+          R, G, B, A = pixels[i * 8 + j]
+          B = (B & 0xfe) | bit
+          pixels[i * 8 + j] = (R, G, B, A)
+    else:
+      random.seed(4020)
+      idx = [i for i in range(72)] + random.sample(range(72, len(pixels)), ((len(_msg) - 9) * 8))
+      for i in range(len(_msg)):
+        for j in range(8):
+          id = i * 8 + j
+          bit = (_msg[i] >> (7 - j)) & 1
+          R, G, B, A = pixels[idx[id]]
+          B = (B & 0xfe) | bit
+          pixels[idx[id]] = (R, G, B, A)
+    # write pixel
+    for y in range(height):
+      for x in range(width):
+        newImg.putpixel((x, y), pixels[y * width + x])
+    self.prevImg = self.img
+    self.img = newImg
     return True
-  
-  def extract(self) -> bytes:
+
+  def extract(self) ->  bytes:
     # extract flag
-    if (len(self.data) < 72): return b'' # didn't have any metadata
+    width, height = self.img.size
+    if (width * height < 72): return b''
     flag = 0x00
     dataLen = bytearray([0 for i in range(8)])
-
-    # extract meta data
+    pixels = list(self.img.getdata())
+    
+    # extract meta
     for i in range(9):
       for j in range(8):
-        if (i == 0):
+        B = pixels[i * 8 + j][2]
+        if i == 0:
           flag <<= 1
-          flag |= self.data[i * 24 + j * 3] & 1
+          flag |= (B & 1)
         else:
           dataLen[i - 1] <<= 1
-          dataLen[i - 1] |= (self.data[i * 24 + j * 3] & 1)
+          dataLen[i - 1] |= (B & 1)
     
     embeddedLen = int.from_bytes(bytes(dataLen), "big")
     embeddedData = bytearray([0 for i in range(embeddedLen)])
-    if flag == 0x00:
+    if flag == 0:
       for i in range(embeddedLen):
         for j in range(8):
-          bit = self.data[(i+9)*24 + j*3] & 1
-          embeddedData[i] = (embeddedData[i] << 1) | bit
-    elif flag == 0xff:
+          B = pixels[(i + 9) * 8 + j][2]
+          embeddedData[i] <<= 1
+          embeddedData[i] |= (B & 1)
+    elif flag == 255:
       random.seed(4020)
-      idx = random.sample(range(72, len(self.data)//3), (embeddedLen * 8))
+      idx = random.sample(range(72, len(pixels)), (embeddedLen * 8))
       for i in range(embeddedLen):
         for j in range(8):
-          bit = self.data[idx[i*8+j]*3] & 1
-          embeddedData[i] = (embeddedData[i] << 1) | bit
-    else:
-      return b''
-
+          id = i * 8 + j
+          B = pixels[idx[id]][2]
+          embeddedData[i] <<= 1
+          embeddedData[i] |= (B & 1)
+    else: return b''
     return bytes(embeddedData)
 
 
-
-
-
-    
-
-
-
-bitmp = BitMap(os.path.join('Hoki2.bmp'))
-bitmp.info()
+# TEST CODE
+bitmp = BitMap(os.path.join('Hoki.png'))
 msg = b'\xff\xff\xff\x92'
-bitmp.embed(msg)
-# bitmp.writeImage('asd.bmp')
+bitmp.embed(msg, True)
+bitmp.writeImage('test')
 print(bitmp.extract())
-# print(bitmp.data[:72])
