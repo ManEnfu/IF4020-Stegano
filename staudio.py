@@ -2,12 +2,14 @@ import wave
 import sys
 import util
 import random
+import math
 
 class Wav:
 
     def __init__(self, path: str = None):
         self.data: bytearray = bytearray(b'')
         self.params: tuple = ()
+        self.psnr = 0
         if path:
             self.read(path)
 
@@ -42,6 +44,7 @@ class Wav:
         return len(self.data) >= size * 8 * sampwidth
 
     def embed(self, msg: bytes, randplace: bool = False) -> bool:
+        rms = 0
         sampwidth = self.params[1]
         magic = b'\xff' if randplace else b'\x00' 
         _msg = magic + len(msg).to_bytes(8, byteorder='big') + msg
@@ -53,10 +56,10 @@ class Wav:
                     k = (i * 8 + j) * sampwidth
                     bit = (_msg[i] >> (7 - j)) & 1
                     cb = self.data[k]
-                    # print(cb, bit)
+                    ocb = cb
                     cb = (cb & 0xfe) | bit
-                    # print('>', cb)
                     self.data[k] = cb
+                    rms += (ocb - cb) ** 2
         else:
             random.seed(0)
             idx = [0] + random.sample(range(1, len(self.data) // sampwidth), len(_msg) * 8 - 1)
@@ -65,8 +68,12 @@ class Wav:
                     k = (i * 8 + j)
                     bit = (_msg[i] >> (7 - j)) & 1
                     cb = self.data[idx[k] * sampwidth]
+                    ocb = cb
                     cb = (cb & 0xfe) | bit
                     self.data[idx[k] * sampwidth] = cb
+                    rms += (ocb - cb) ** 2
+        rms = math.sqrt(rms / (len(self.data) // sampwidth)) 
+        self.psnr = 20 * math.log10((256 ** sampwidth - 1)/rms)
         return True
 
     
@@ -137,12 +144,14 @@ if __name__ == '__main__':
             exit(-1)
         msg = util.read_file_binary(sys.argv[3])
         wav.embed(msg)
+        print('psnr:', wav.psnr)
         wav.write(sys.argv[4])
     elif sys.argv[2] == 'ir':
         if len(sys.argv) < 5:
             exit(-1)
         msg = util.read_file_binary(sys.argv[3])
         wav.embed(msg, randplace=True)
+        print('psnr:', wav.psnr)
         wav.write(sys.argv[4])
     elif sys.argv[2] == 'x':
         if len(sys.argv) < 4:
