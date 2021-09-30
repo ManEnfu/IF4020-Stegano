@@ -174,7 +174,7 @@ class MainWindow(QtWidgets.QMainWindow):
         
         stego_content = self.message
         if self.key_textbox.text() != '':
-            stego_content = rc4.moencrypt(self.message, self.key_textbox.text())
+            stego_content = rc4.moencrypt(self.message, self.key_textbox.text().encode('utf-8'))
 
         self.result_format = self.extract_format(self.mediaFname)
         isRandom = self.rand_radio.isChecked()
@@ -201,7 +201,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.result = stimage.extractMessage(self.mediaPath)
         
         if self.key_textbox.text() != '':
-            self.result = rc4.modecrypt(self.result, self.key_textbox.text())
+            self.result = rc4.modecrypt(self.result, self.key_textbox.text().encode('utf-8'))
         
         self.result_textbox.setText("Binary File Extracted from {}".format(self.mediaFname))
         
