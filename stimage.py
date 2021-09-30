@@ -17,13 +17,9 @@ class BitMap:
     img = Image.open(path)
     self.img = img
 
-  def writeImage(self, targetPath: str):
+  def write(self, targetPath: str):
     if self.img:
-      path = self.path.split(os.sep)
-      filename = path[len(path) - 1].split('.')
-      formatType = filename[len(filename) - 1]
-      targetName = "{}.{}".format(targetPath, formatType)
-      self.img.save(targetName)
+      self.img.save(targetPath)
     else: print('no image found')
 
   def checksize(self, size: int):
@@ -136,11 +132,20 @@ class BitMap:
     else: return b''
     return bytes(embeddedData)
 
+def embedMessage(mediaPath: str, message: bytes, randomMode: bool) -> BitMap:
+  bm = BitMap(mediaPath)
+  bm.embed(message, randomMode)
+  return bm
+
+
+def extractMessage(mediaPath: str) -> bytes:
+  bm = BitMap(mediaPath)
+  return bm.extract()
 
 # TEST CODE
 # bitmp = BitMap(os.path.join('Hoki.png'))
 # msg = b'\xff\xff\xff\x92'
 # bitmp.embed(msg, True)
 # print(bitmp.calculatePSNR())
-# bitmp.writeImage('test')
+# bitmp.write('test')
 # print(bitmp.extract())

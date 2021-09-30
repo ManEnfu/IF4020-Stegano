@@ -3,7 +3,7 @@ import sys
 import util
 import random
 import math
-
+import os
 class Wav:
 
     def __init__(self, path: str = None):
@@ -131,7 +131,15 @@ class Wav:
                     di += 1
                 data[i] = mb
             return bytes(data)
-        
+
+def embedMessage(mediaPath: str, message: bytes, randomMode: bool) -> Wav:
+    sta = Wav(mediaPath)
+    sta.embed(message, randomMode)
+    return sta
+
+def extractMessage(mediaPath: str) -> bytes:
+    sta = Wav(mediaPath)
+    return sta.extract()
 
 if __name__ == '__main__':
     if len(sys.argv) < 3:
