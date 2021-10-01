@@ -71,9 +71,9 @@ class BitMap:
       for i in range(len(_msg)):
         for j in range(8):
           bit = (_msg[i] >> (7 - j)) & 1
-          R, G, B, A = pixels[i * 8 + j]
-          B = (B & 0xfe) | bit
-          pixels[i * 8 + j] = (R, G, B, A)
+          tupleList = list(pixels[i * 8 + j])
+          tupleList[2] = (tupleList[2] & 0xfe) | bit
+          pixels[i * 8 + j] = tuple(tupleList)
     else:
       random.seed(4020)
       idx = [i for i in range(72)] + random.sample(range(72, len(pixels)), ((len(_msg) - 9) * 8))
@@ -81,9 +81,9 @@ class BitMap:
         for j in range(8):
           id = i * 8 + j
           bit = (_msg[i] >> (7 - j)) & 1
-          R, G, B, A = pixels[idx[id]]
-          B = (B & 0xfe) | bit
-          pixels[idx[id]] = (R, G, B, A)
+          tupleList = list(pixels[idx[id]])
+          tupleList[2] = (tupleList[2] & 0xfe) | bit
+          pixels[idx[id]] = tuple(tupleList)
     # write pixel
     for y in range(height):
       for x in range(width):
