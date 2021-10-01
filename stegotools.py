@@ -20,6 +20,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.messagePath = ""
         self.result = None
         self.result_format = ""
+        self.psnr = 0
 
         self.media_textbox = QtWidgets.QTextEdit(self)
         self.media_textbox.setReadOnly(True)
@@ -181,13 +182,15 @@ class MainWindow(QtWidgets.QMainWindow):
         if self.result_format in audio_format:
             res = staudio.embedMessage(self.mediaPath, stego_content, isRandom)
             self.result = res
+            self.psnr = res.psnr
             self.result_label = "Stego Audio File"
         else:
             res = stimage.embedMessage(self.mediaPath, stego_content, isRandom)
             self.result = res
+            self.psnr = res.calculatePSNR()
             self.result_label = "Stego Image File"
 
-        self.result_textbox.setText("{}_stego.{}".format(self.mediaFname.split('.')[0], self.result_format))
+        self.result_textbox.setText("{}_stego.{}\nPSNR: {}dB".format(self.mediaFname.split('.')[0], self.result_format, self.psnr))
     
     def handle_extract_button(self):
         if self.media == None:
