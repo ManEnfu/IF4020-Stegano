@@ -10,6 +10,7 @@ class BitMap:
     self.img: Image = None
     self.prevImg: Image = None
     self.path = coverPath
+    self.status = ''
     if coverPath:
       self.readImage(coverPath)
 
@@ -59,6 +60,7 @@ class BitMap:
     _msg = flag + len(msg).to_bytes(8, byteorder='big') + msg
 
     if (not self.checksize(len(_msg)) or self.img == None):
+      self.status = 'errsize'
       return False
     
     newImg = self.img.copy()

@@ -1,3 +1,5 @@
+#!/usr/bin/python
+
 import sys
 import util
 import rc4
@@ -181,11 +183,23 @@ class MainWindow(QtWidgets.QMainWindow):
         isRandom = self.rand_radio.isChecked()
         if self.result_format in audio_format:
             res = staudio.embedMessage(self.mediaPath, stego_content, isRandom)
+            if res.status == 'errsize':
+                self.result_textbox.setText('Error: Message is too large to be embedded into media')
+                msgbox = QtWidgets.QMessageBox()
+                msgbox.setText('Message is too large to be embedded into media')
+                msgbox.exec()
+                return
             self.result = res
             self.psnr = res.psnr
             self.result_label = "Stego Audio File"
         else:
             res = stimage.embedMessage(self.mediaPath, stego_content, isRandom)
+            if res.status == 'errsize':
+                self.result_textbox.setText('Error: Message is too large to be embedded into media')
+                msgbox = QtWidgets.QMessageBox()
+                msgbox.setText('Message is too large to be embedded into media')
+                msgbox.exec()
+                return
             self.result = res
             self.psnr = res.calculatePSNR()
             self.result_label = "Stego Image File"

@@ -10,6 +10,7 @@ class Wav:
         self.data: bytearray = bytearray(b'')
         self.params: tuple = ()
         self.psnr = 0
+        self.status = ''
         if path:
             self.read(path)
 
@@ -49,6 +50,7 @@ class Wav:
         magic = b'\xff' if randplace else b'\x00' 
         _msg = magic + len(msg).to_bytes(8, byteorder='big') + msg
         if not self.checksize(len(_msg)):
+            self.status = 'errsize'
             return False
         if not randplace:
             for i in range(len(_msg)):
